@@ -34,7 +34,8 @@ This should generate the rendered outputs given the specific configuration.
 
 To generate multiple keyframes of all BundleFusion dataset, run the all in one script: 
 
-``` 
+```
+# For the purpose of running the rendering in parallel 
 python run_BunldeFusion.py
 ```
 
@@ -106,6 +107,7 @@ python parse_static_scene_output.py
 
 ### The final output Layout
 
+```
 data:
 ---- RefRESH:
 -------- BundleFusion_dynamic

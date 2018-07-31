@@ -14,7 +14,7 @@ from bpy_extras.object_utils import world_to_camera_view as world2cam
 sys.path.insert(0, ".")
 from motion_surreal import *
 from motion_mechanism import *
-
+from io_utils import load_file
 from utils import world_to_blender, set_intrinsic
 from scipy.misc import imread
 
@@ -33,7 +33,7 @@ class DynamicHumanRender:
 
         self.start_time = time.time()
 
-        self.params = io_utils.load_file('configs/main_config', 'SYNTH_HUMAN')
+        self.params = load_file('configs/main_config', 'SYNTH_HUMAN')
 
         if bg_scene is None:
             bg_scene = self.params['bg_scene']

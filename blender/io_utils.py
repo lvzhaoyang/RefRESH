@@ -1,18 +1,14 @@
 import ast
 import configparser
 import numpy as np
-import png, re, os
-import matplotlib.colors as color
+import re, os
 from scipy.misc import imsave, imread
 from PIL import Image, ImageDraw, ImageFont
-from cv2 import imwrite as depth_write # this is specifically for writing depth in 16-bit png
 
 # Check for endianness, based on Daniel Scharstein's optical flow code.
 # Using little-endian architecture, these two should be equal.
 TAG_FLOAT = 202021.25
 TAG_CHAR = 'PIEH'.encode()
-
-fnt = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 40)
 
 def create_directory(filename):
     target_dir = os.path.dirname(filename)
@@ -51,40 +47,11 @@ def pngdepth_read(filename):
     return imread(filename).astype(np.float32) / 1000.0
 
 def pngdepth_write(filename, depth):
-
+    # this is specifically for writing depth in 16-bit png
+    from cv2 import imwrite as depth_write 
     create_directory(filename)
     # we need to save it as uint16
     depth_write(filename, (depth.copy() * 1e3).astype(np.uint16)) 
-
-def pngflow_read(path):
-    """ Read the optical flow in png format (same as KITTI)
-    """
-    reader = png.Reader(path)
-    pngdata = reader.read()
-    flow = np.array(map(np.uint16, pngdata[2]))
-    H, _ = flow.shape
-    flow = flow.reshape((H, -1, 3)).astype(np.float32)
-    flow[:,:,0:2] = (flow[:,:,0:2] - 2**15) / 64.0
-    u, v, invalid = flow[:,:,0], flow[:,:,1], flow[:,:,2]
-    # all the invalid regions will equal to 0
-    return u, v, invalid
-
-def pngflow_write(flow, path):
-    """ Write the optical flow in png format (same as KITTI)
-    """
-    create_directory(path)
-
-    flow = (flow * 64 + 2**15).astype(np.uint16)
-
-    valid = (flow >= 0) & (flow < 2**16).astype(np.uint16)
-    mask = ((valid[:,:,0]) & (valid[:,:,1]) ).astype(np.uint16)
-
-    data = np.concatenate((flow, mask[:,:,np.newaxis]), axis=2)
-    H, W = mask.shape
-
-    with open(path, 'wb') as png_file:
-        png_writer = png.Writer(width=W, height=H, bitdepth=16, compression=3, greyscale=False)
-        png_writer.write_array(png_file, data.reshape((H*W*3)))
 
 def readPFM(file):
     """ read the file in pfm format
@@ -165,6 +132,7 @@ def writePFM(file, image, scale=1):
 def flow_visualize(flow, max_range = 1e3):
     """ Original code from SINTEL toolbox, by Jonas Wulff.
     """
+    import matplotlib.colors as colors
     du = flow[:, :, 0]
     dv = flow[:, :, 1]
     [h,w] = du.shape
@@ -177,7 +145,7 @@ def flow_visualize(flow, max_range = 1e3):
     # phase layer
     #img[:, :, 2] = valid
     # convert to rgb
-    img = color.hsv_to_rgb(img)
+    img = colors.hsv_to_rgb(img)
     # remove invalid point
     img[:, :, 0] = img[:, :, 0]
     img[:, :, 1] = img[:, :, 1]

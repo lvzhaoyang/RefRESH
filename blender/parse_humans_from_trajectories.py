@@ -1,4 +1,4 @@
-import sys, os, time, random, config, pickle
+import sys, os, time, random, pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ class HumanSceneParser:
 
         self.start_time = time.time()
 
-        params = config.load_file('configs/main_config', 'SYNTH_HUMAN')
+        params = io_utils.load_file('configs/main_config', 'SYNTH_HUMAN')
 
         if bg_scene is None:
             bg_scene = params['bg_scene']

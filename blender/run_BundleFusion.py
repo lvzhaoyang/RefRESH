@@ -1,15 +1,7 @@
 import sys, os
-import config
+import io_utils
 import os.path as osp
 import pickle
-
-from parse_static_scene import StaticSceneParser
-
-BLENDER_PATH='~/develop/blender-2.79b'
-dataset = 'bundlefusion'
-
-scenes = ['apt0', 'apt1', 'apt2', 'copyroom', 'office0', 'office1', 'office2', 'office3']
-keyframes = [1, 2, 5, 10, 20]
 
 def total_file_num(params, stride):
     raw_path_pickle = osp.join(params['input_path'], scene+'.pkl')
@@ -38,7 +30,7 @@ def check_exr_tmp_is_rendered(scene, stride):
         Then we can skip the rendering process.        
     """
 
-    params = config.load_file('configs/main_config', 'STATIC_3D_SCENE')
+    params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
     total_num = total_file_num(params, stride)
 
     rendered_path = osp.join(params['tmp_path'], scene, 'keyframe_'+str(stride))
@@ -58,7 +50,7 @@ def check_final_is_rendered(scene, stride):
     """ Return True if the final rendered files are complete. 
         Then we can skip the file generation process 
     """
-    params = config.load_file('configs/main_config', 'STATIC_3D_SCENE')
+    params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
     total_num = total_file_num(params, stride)
 
     output_pickle = osp.join(params['output_path'], scene, 'keyframe_'+str(stride), 'info.pkl')
@@ -81,35 +73,55 @@ def check_final_is_rendered(scene, stride):
 
     return True
 
-def render_worker(scene, keyframe):
+def render_worker(settings):
 
-    tmp_exist = check_exr_tmp_is_rendered(scene, keyframe)
+    scene, keyframe = settings
+
     final_exist = check_final_is_rendered(scene, keyframe)
 
     if not final_exist:
+
+        tmp_exist = check_exr_tmp_is_rendered(scene, keyframe)
         if not tmp_exist:
             args = '-- --dataset {:} --scene {:} --stride {:}'.format(dataset, scene, keyframe)
             command = '{:}/blender --background --python \
                 render_static_scenes.py {:}'.format(BLENDER_PATH, args)
             os.system(command)
 
+        from parse_static_scene import StaticSceneParser
         static_scene_parser = StaticSceneParser(dataset, scene, keyframe)
         static_scene_parser.run()
 
 if __name__ == '__main__':
-    
-    from multiprocessing import Pool
 
-    number_processes = 4
+    import argparse
 
-    # render all the scenes
+    parser = argparse.ArgumentParser(description='Run BundleFusion')
+    parser.add_argument('--index', type=int, default = -1, 
+        help='set the index to run the jobs. The default is set to -1 and run all the jobs.')
+    parser.add_argument('--processes', type=int, default=1, 
+        help='the number of processes to run multi-jobs if execute run_all')
+    args = parser.parse_args()
+
+    BLENDER_PATH='~/develop/blender-2.79b'
+    dataset = 'bundlefusion'
+
+    scenes = ['apt0', 'apt1', 'apt2', 'copyroom', 'office0', 'office1', 'office2', 'office3']
+    keyframes = [1, 2, 5, 10, 20]
+
     render_list = []
     for scene in scenes: 
         for keyframe in keyframes:
             render_list.append([scene, keyframe])
 
-    p = multiprocessing.Pool(number_processes)
-    p.map(render_worker, render_list)
+    if args.index < 0: 
+        print('Run all the jobs')
+        import multiprocessing
+        # render all the scenes
+        p = multiprocessing.Pool(args.processes)
+        p.map(render_worker, tuple(render_list))
+    else: 
+        render_worker(tuple(render_list[args.index]))        
 
 
 

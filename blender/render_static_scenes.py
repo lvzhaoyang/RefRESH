@@ -12,6 +12,7 @@ from bpy_extras.object_utils import world_to_camera_view as world2cam
 from mathutils import Matrix, Vector, Quaternion, Euler
 
 sys.path.insert(0, ".")
+from io_utils import load_file
 from utils import world_to_blender, set_intrinsic
 
 class StaticSceneRender:
@@ -26,7 +27,7 @@ class StaticSceneRender:
 
         self.log_message("Importing the 3D static scene info.")
 
-        self.params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
+        self.params = load_file('configs/main_config', 'STATIC_3D_SCENE')
 
         if dataset_name is None:
             dataset_name = self.params['dataset']
@@ -56,7 +57,8 @@ class StaticSceneRender:
             self.cam_poses.append(pose)
 
         self.total_num = len(self.cam_poses)
-        print('There will be {:d} poses rendered for the static scene'.format(self.total_num))
+        print('There will be {:d} poses rendered for the \
+            3D scene {:}, keyframe {:}'.format(self.total_num, scene_name, stride))
         bpy.context.scene.frame_start = 0
         bpy.context.scene.frame_end = self.total_num
 
@@ -70,8 +72,6 @@ class StaticSceneRender:
         self.tmp_path = join(self.params['tmp_path'], folder_name)
 
         self.init_scene(join(data_folder, bg_mesh_file))
-
-        # self.res_paths = self.create_composite_nodes()
 
     def run_rendering(self):
         """ Run the rendering script.
@@ -121,7 +121,7 @@ class StaticSceneRender:
 
         # settings to speed up the blender rendering speed
         # Since we don't care too much about the rendered images, these setttings are
-        # pretty redundant (x20 speed up on a single GPU)
+        # pretty redundant
         # for tile rendering
         bpy_render.use_raytrace = False
         bpy_render.tile_x = 512
@@ -130,13 +130,13 @@ class StaticSceneRender:
         bpy_scene.cycles.samples = 64
 
         # choose the rendering engine
-        cycles_preferences = bpy.context.user_preferences.addons['cycles'].preferences
+        # cycles_preferences = bpy.context.user_preferences.addons['cycles'].preferences
         # cycles_preferences.compute_device_type = "CUDA"
 
-        # Specify the gpu for rendering
-        for device in cycles_preferences.devices:
-            device.use = False
-        cycles_preferences.devices[0].use = True
+        # # Specify the gpu for rendering
+        # for device in cycles_preferences.devices:
+        #     device.use = False
+        # cycles_preferences.devices[7].use = True
 
     def init_scene(self, mesh_path):
 
@@ -200,75 +200,6 @@ class StaticSceneRender:
     def log_message(self, message):
         elapsed_time = time.time() - self.start_time
         print("[%.2f s] %s" % (elapsed_time, message))
-
-    def create_composite_nodes(self):
-        '''
-        Deprecated: we found it does not produce the same output as
-        directly rendering using multilayer openexr
-
-        Create the different passes for blender rendering.
-        Note: refer to blender render passes for all the relevant information:
-        https://docs.blender.org/manual/en/dev/render/blender_render/settings/passes.html
-
-        We use cycles engine in our renderng setting: https://docs.blender.org/manual/en/dev/render/cycles/settings/scene/render_layers/passes.html
-        '''
-
-        tree = bpy.data.scenes['Scene'].node_tree
-
-        res_paths = {k:join(self.tmp_path, k) for k in self.params['output_types'] if self.params['output_types'][k]}
-
-        # clear default nodes
-        for n in tree.nodes:
-            tree.nodes.remove(n)
-
-        # create node for foreground image
-        layers = tree.nodes.new('CompositorNodeRLayers')
-        layers.location = -300, 400
-
-        if(self.params['output_types']['vblur']):
-        # create node for computing vector blur (approximate motion blur)
-            vblur = tree.nodes.new('CompositorNodeVecBlur')
-            vblur.factor = params['vblur_factor']
-            vblur.location = 240, 400
-
-            # create node for saving output of vector blurred image
-            vblur_out = tree.nodes.new('CompositorNodeOutputFile')
-            vblur_out.format.file_format = 'PNG'
-            vblur_out.base_path = res_paths['vblur']
-            vblur_out.location = 460, 460
-
-        # create node for the rendered meshes
-        composite_out = tree.nodes.new('CompositorNodeOutputFile')
-        composite_out.location = 40, 500
-        tree.links.new(layers.outputs['Image'], composite_out.inputs[0])  # rendered outputs
-
-        # create node for saving depth
-        if(self.params['output_types']['depth']):
-            depth_out = tree.nodes.new('CompositorNodeOutputFile')
-            depth_out.location = 40, 600
-            depth_out.format.file_format = 'OPEN_EXR'
-            depth_out.base_path = res_paths['depth']
-            tree.links.new(layers.outputs['Depth'], depth_out.inputs[0])   # save depth
-
-        # create node for saving normals
-        if(self.params['output_types']['normal']):
-            normal_out = tree.nodes.new('CompositorNodeOutputFile')
-            normal_out.location = 40, 700
-            normal_out.format.file_format = 'OPEN_EXR'
-            normal_out.base_path = res_paths['normal']
-            tree.links.new(layers.outputs['Normal'], normal_out.inputs[0]) # save normal
-
-        # create node for saving ground truth flow
-        # Explaination from blender:
-        # Motion vectors for the vector blur node. The four components consist of 2D vectors giving the motion towards the next and previous frame position in pixel space.
-        if(self.params['output_types']['gtflow']):
-            gtflow_out = tree.nodes.new('CompositorNodeOutputFile')
-            gtflow_out.location = 40, 800
-            gtflow_out.format.file_format = 'OPEN_EXR'
-            gtflow_out.base_path = res_paths['gtflow']
-            tree.links.new(layers.outputs['Vector'], gtflow_out.inputs[0])  # save ground truth flow
-
-        return res_paths
 
 if __name__ == '__main__':
 

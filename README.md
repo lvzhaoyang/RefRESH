@@ -6,7 +6,7 @@ If you use this code or our generated dataset, please cite the following paper:
 
 **Learning Rigidity in Dynamic Scenes with a Moving Camera for 3D Motion Field Estimation**
 Zhaoyang Lv, Kihwan Kim, Alejandro Troccoli, Deqing Sun, James M. Rehg, Jan Kautz, 
-European Conference on Computer Vision 2018, [arXiv][7]
+European Conference on Computer Vision 2018, [ArXiv Preprint][7]
 
 ```bibtex
 @inproceedings{Lv18eccv,  
@@ -17,9 +17,12 @@ European Conference on Computer Vision 2018, [arXiv][7]
 }
 ```
 
-## Contents
+## Contents 
 
-
+* [Dependencies](#Dependencies)
+* [Run Instructions](./blender/README.md)
+* [License](#License)
+* [Acknowledgement](#Acknowledgement)
 
 ## Dependencies
 
@@ -36,25 +39,22 @@ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 $BLENDER_PYTHON/bin/python3.5m get-pip.py
 
 alias blender_pip=$BLENDER_PYTHON/bin/pip3
-
-blender_pip install scipy # and etc.
+# install the python dependencies for blender python  
+blender_pip install -r setup/blender_requirements.txt
 ```
-
-ToDo: install the python dependencies for blender python
 
 ### Set system dependencies
 
 ``` bash
 sudo apt-get install openexr
 sudo apt-get install libopenexr-dev
-sudo apt-get install ffmpeg # optional, only for visualization purpose
 ```
 
 ### Set the python environment 
 
 We have already created the conda environment for all the dependencies:
 
-```
+``` bash
 conda env create -f setup/conda_environment.yml
 ```
 
@@ -110,11 +110,15 @@ cd smpl_data
 
 For a more detailed instructions specifically for this dataset, please refer to smpl_data/README.md.
 
+### Ready to run
+
+To create your dataset with the blender toolkit, please go to [./blender/README](./blender/README.md) folder 
+
 ## License
 
 To be added. 
 
-## Download the RefRESH dataset
+## Download the created RefRESH dataset
 
 We are currently working how to host the dataset. It will be available soon. 
 
@@ -128,4 +132,4 @@ Our work can not be done without the precedent research efforts. Part of the hum
 [4]: http://graphics.stanford.edu/projects/bundlefusion/
 [5]: https://github.com/gulvarol/surreal
 [6]: https://youtu.be/MnTHkOCY790?t=3m5s
-[7]: #
+[7]: https://arxiv.org/abs/1804.04259

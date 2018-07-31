@@ -1,5 +1,5 @@
 
-import sys, os, time, argparse, random, config
+import sys, os, time, argparse, random
 import numpy as np
 import io_utils
 
@@ -7,7 +7,7 @@ from pickle import load, dump
 from os.path import join, dirname, realpath, exists
 from scipy.misc import imread
 
-import OpenEXR, array, Imath
+import OpenEXR, Imath
 FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
 
 class StaticSceneParser:
@@ -15,7 +15,7 @@ class StaticSceneParser:
     def __init__(self, dataset_name = None, scene_name = None, stride = None,
         compare=False):
 
-        self.params = config.load_file('configs/main_config', 'STATIC_3D_SCENE')
+        self.params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
         self.width = self.params['width']
         self.height= self.params['height']
 
