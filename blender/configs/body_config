@@ -1,0 +1,22 @@
+
+# This config partly refers to SURREAL datasets
+# Zhaoyang Lv
+
+[SYNTH_HUMAN]
+tmp_path           = '/home/zlv30/develop/deeprigidflow/code/blender/SceneMotions/foreground/tmp'
+output_path        = '/home/zlv30/develop/deeprigidflow/code/blender/SceneMotions/foreground/final'
+
+output_types       = {'depth':True, 'fg':True, 'gtflow':True, 'normal':True, 'segm':True, 'vblur':False}
+
+smpl_data_folder   = 'smpl_data'
+smpl_data_filename = 'smpl_data.npz'
+clothing_option    = 'all' # grey, nongrey or all
+
+width     = 640
+height    = 480
+
+# subsampling MoCap sequence by selecting every 10th frame, this is a parameter that we can tune when creating different coverage of foreground motions
+fg_stride = 20  # fg motion stride over background motion: fg_stride * bg_stride
+
+# number of foreground objects
+fg_objects = 10 # the number of foreground objects
