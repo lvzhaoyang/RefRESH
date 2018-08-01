@@ -70,9 +70,10 @@ def check_final_is_rendered(scene, stride):
 
     print('All files have been correctly generated for scene {:}, keyframe {:}'.format(scene, stride))
 
-    if osp.exists(params['tmp_path']):
-        print('Remove all temporary files {:}'.format(params['tmp_path']))
-        os.system('rm -rf {:}'.format(params['tmp_path']))
+    tmp_path = osp.join(params['tmp_path'], scene, 'keyframe_'.format(stride))
+    if osp.exists(tmp_path):
+        print('Remove all temporary files {:}'.format(tmp_path))
+        os.system('rm -rf {:}'.format(tmp_path))
 
     return True
 
@@ -81,21 +82,21 @@ def render_worker(settings):
     scene, keyframe = settings
     params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
 
-    if not check_final_is_rendered(scene, keyframe):
+    if check_final_is_rendered(scene, keyframe): return 
 
-        tmp_exist = check_exr_tmp_is_rendered(scene, keyframe)
-        if not tmp_exist:
-            args = '--dataset {:} --scene {:} --stride {:}'.format(dataset, scene, keyframe)
-            command = '{:}/blender --background --python \
-                render_static_scenes.py -- {:}'.format(BLENDER_PATH, args)
-            os.system(command)
+    if not check_exr_tmp_is_rendered(scene, keyframe):
+        args = '--dataset {:} --scene {:} --stride {:}'.format(dataset, scene, keyframe)
+        command = '{:}/blender --background --python \
+            render_static_scenes.py -- {:}'.format(BLENDER_PATH, args)
+        os.system(command)
 
-        from parse_static_scene import StaticSceneParser
-        static_scene_parser = StaticSceneParser(dataset, scene, keyframe)
-        static_scene_parser.run()
+    from parse_static_scene import StaticSceneParser
+    static_scene_parser = StaticSceneParser(dataset, scene, keyframe)
+    static_scene_parser.run()
 
-        print('Remove all temporary files {:}'.format(params['tmp_path']))
-        os.system('rm -rf {:}'.format(params['tmp_path']))
+    tmp_path = osp.join(params['tmp_path'], scene, 'keyframe_'.format(stride))
+    print('Remove all temporary files {:}'.format(tmp_path))
+    os.system('rm -rf {:}'.format(tmp_path))
 
 if __name__ == '__main__':
 
