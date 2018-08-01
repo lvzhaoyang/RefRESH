@@ -45,7 +45,7 @@ class HumanSceneParser:
         self.log_message('Set up background information')
         bg_base_path = params['bg_base_path']
 
-        background_path = join(bg_base_path, bg_scene, 'keyframe_'+str(bg_stride), 'info.pkl')
+        background_path = join(bg_base_path, bg_scene, 'keyframe_{:}'.format(bg_stride), 'info.pkl')
         with open(background_path, 'rb') as f:
             files = pickle.load(f)
             self.bg_color_files         = files['raw_color']
@@ -63,12 +63,14 @@ class HumanSceneParser:
         #######################################################################
         self.log_message('Set up output folder')
         output_path = params['output_path']
-        out_folder_name = join(bg_scene, 'keyframe_'+str(bg_stride).zfill(2), str(bg_start).zfill(4)+'_'+str(bg_end).zfill(4))
+        out_folder_name = join(bg_scene, 'keyframe_{:}'.format(bg_stride), 
+            '{:04d}_{:04d}'.format(bg_start, bg_end))
         self.output_path = join(output_path, out_folder_name)
         print('The final output will be written to {:s}'.format(self.output_path))
 
         output_types = params['output_types']
-        tmp_folder_name = join(bg_scene, 'keyframe_'+str(bg_stride).zfill(2), str(bg_start).zfill(4)+'_'+str(bg_end).zfill(4))
+        tmp_folder_name = join(bg_scene, 'keyframe_{:}'.format(bg_stride), 
+            '{:04d}_{:04d}'.format(bg_start, bg_end))
         self.tmp_path = join(params['tmp_path'], tmp_folder_name)
         output_types['rgb_video.mp4'] = True
 

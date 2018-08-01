@@ -3,7 +3,7 @@ import io_utils
 import os.path as osp
 import pickle
 
-def total_file_num(params, stride):
+def total_file_num(params, scene, stride):
     raw_path_pickle = osp.join(params['input_path'], scene+'.pkl')
     with open(raw_path_pickle, 'rb') as f:
         files = pickle.load(f, encoding='bytes')
@@ -24,6 +24,7 @@ def loop_file_existence(files):
         if not osp.exists(f): 
             print('Missing {:}'.format(f))            
             return False
+        return True
 
 def check_exr_tmp_is_rendered(scene, stride):
     """ Return True if the intermediate openexr file is rendered. 
@@ -31,7 +32,7 @@ def check_exr_tmp_is_rendered(scene, stride):
     """
 
     params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
-    total_num = total_file_num(params, stride)
+    total_num = total_file_num(params, scene, stride)
 
     rendered_path = osp.join(params['tmp_path'], scene, 'keyframe_'+str(stride))
     for idx in range(total_num):
@@ -51,10 +52,11 @@ def check_final_is_rendered(scene, stride):
         Then we can skip the file generation process 
     """
     params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
-    total_num = total_file_num(params, stride)
+    total_num = total_file_num(params, scene, stride)
 
     output_pickle = osp.join(params['output_path'], scene, 'keyframe_'+str(stride), 'info.pkl')
     if not osp.exists(output_pickle):
+        print('Files do not exist for the scene {:}, keyframe {:}'.format(scene, stride))
         return False
 
     with open(output_pickle, 'rb') as f:
@@ -64,6 +66,7 @@ def check_final_is_rendered(scene, stride):
             loop_file_existence(files['flow_backward']) or \
             loop_file_existence(files['depth'])):
             print('Need to re-generates files for the scene {:}, keyframe {:}'.format(scene, stride))
+            return False
 
     print('All files have been correctly generated for scene {:}, keyframe {:}'.format(scene, stride))
 
@@ -76,26 +79,29 @@ def check_final_is_rendered(scene, stride):
 def render_worker(settings):
 
     scene, keyframe = settings
+    params = io_utils.load_file('configs/main_config', 'STATIC_3D_SCENE')
 
-    final_exist = check_final_is_rendered(scene, keyframe)
-
-    if not final_exist:
+    if not check_final_is_rendered(scene, keyframe):
 
         tmp_exist = check_exr_tmp_is_rendered(scene, keyframe)
         if not tmp_exist:
-            args = '-- --dataset {:} --scene {:} --stride {:}'.format(dataset, scene, keyframe)
+            args = '--dataset {:} --scene {:} --stride {:}'.format(dataset, scene, keyframe)
             command = '{:}/blender --background --python \
-                render_static_scenes.py {:}'.format(BLENDER_PATH, args)
+                render_static_scenes.py -- {:}'.format(BLENDER_PATH, args)
             os.system(command)
 
         from parse_static_scene import StaticSceneParser
         static_scene_parser = StaticSceneParser(dataset, scene, keyframe)
         static_scene_parser.run()
 
+        print('Remove all temporary files {:}'.format(params['tmp_path']))
+        os.system('rm -rf {:}'.format(params['tmp_path']))
+
 if __name__ == '__main__':
 
-    import argparse
+    BLENDER_PATH='~/develop/blender-2.79b'
 
+    import argparse
     parser = argparse.ArgumentParser(description='Run BundleFusion')
     parser.add_argument('--index', type=int, default = -1, 
         help='set the index to run the jobs. The default is set to -1 and run all the jobs.')
@@ -103,7 +109,6 @@ if __name__ == '__main__':
         help='the number of processes to run multi-jobs if execute run_all')
     args = parser.parse_args()
 
-    BLENDER_PATH='~/develop/blender-2.79b'
     dataset = 'bundlefusion'
 
     scenes = ['apt0', 'apt1', 'apt2', 'copyroom', 'office0', 'office1', 'office2', 'office3']

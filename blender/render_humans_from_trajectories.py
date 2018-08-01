@@ -137,7 +137,8 @@ class DynamicHumanRender:
 
     def init_directories(self, bg_scene, bg_start, bg_end, bg_stride):
 
-        folder_name = join(bg_scene, 'keyframe_'+str(bg_stride).zfill(2), str(bg_start).zfill(4)+'_'+str(bg_end).zfill(4))
+        folder_name = join(bg_scene, 'keyframe_{:}'.format(bg_stride), 
+            '{:04d}_{:04d}'.format(bg_start, bg_end))
 
         self.tmp_path = join(self.params['tmp_path'], folder_name)
         if not isdir(self.tmp_path): os.makedirs(self.tmp_path)
@@ -155,7 +156,7 @@ class DynamicHumanRender:
         # load the pickle file generated from background rendering
         bg_base_path = self.params['bg_base_path']
         background_path = join(bg_base_path, bg_scene, 
-            'keyframe_'+str(bg_stride), 'info.pkl')
+            'keyframe_{:}'.format(bg_stride), 'info.pkl')
 
         with open(background_path, 'rb') as f:
             files = load(f, encoding='bytes')

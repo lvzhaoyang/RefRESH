@@ -1,11 +1,13 @@
 # RefRESH:
 
-The blender toolkit for **REal 3D from REconstruction with Synthetic Humans (RefRESH)**. [Here is a video example of the dataset][6].
+The blender toolkit for **REal 3D from REconstruction with Synthetic Humans (RefRESH)**. 
+
+[Video Example of the Created Data][6] | [Project Page][8]
 
 If you use this code or our generated dataset, please cite the following paper:
 
-**Learning Rigidity in Dynamic Scenes with a Moving Camera for 3D Motion Field Estimation**
-Zhaoyang Lv, Kihwan Kim, Alejandro Troccoli, Deqing Sun, James M. Rehg, Jan Kautz, 
+**Learning Rigidity in Dynamic Scenes with a Moving Camera for 3D Motion Field Estimation**,
+*Zhaoyang Lv, Kihwan Kim, Alejandro Troccoli, Deqing Sun, James M. Rehg, Jan Kautz*, 
 European Conference on Computer Vision 2018, [ArXiv Preprint][7]
 
 ```bibtex
@@ -43,7 +45,7 @@ alias blender_pip=$BLENDER_PYTHON/bin/pip3
 blender_pip install -r setup/blender_requirements.txt
 ```
 
-### Set system dependencies
+### Install system dependencies
 
 ``` bash
 sudo apt-get install openexr
@@ -58,7 +60,7 @@ We have already created the conda environment for all the dependencies:
 conda env create -f setup/conda_environment.yml
 ```
 
-## Prepare for 3D static scene datasets
+## Prepare the 3D static scene datasets
 
 Our dataset creation strategy is not limited to any particular 3D reconstruction dataset. In this paper, we use the scenes reconstructed from [BundleFusion][4] project only as an example. 
 
@@ -112,7 +114,7 @@ For a more detailed instructions specifically for this dataset, please refer to 
 
 ### Ready to run
 
-To create your dataset with the blender toolkit, please go to [./blender/README](./blender/README.md) folder 
+To create your dataset with the blender toolkit, please refer to [./blender/README](./blender/README.md) 
 
 ## License
 
@@ -133,3 +135,4 @@ Our work can not be done without the precedent research efforts. Part of the hum
 [5]: https://github.com/gulvarol/surreal
 [6]: https://youtu.be/MnTHkOCY790?t=3m5s
 [7]: https://arxiv.org/abs/1804.04259
+[8]: https://github.com/NVlabs/learningrigidity

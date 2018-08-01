@@ -36,6 +36,9 @@ To generate multiple keyframes of all BundleFusion dataset, run the all in one s
 
 ```
 # For the purpose of running the rendering in parallel 
+# The blender path is default in my machine as:    
+# BLENDER_PATH='~/develop/blender-2.79b'
+# please set it to the correct path in your machine
 python run_BunldeFusion.py
 ```
 
