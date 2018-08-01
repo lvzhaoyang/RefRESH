@@ -1,0 +1,56 @@
+
+# This config file partly refers to the SURREAL toolkit.
+# Author: Zhaoyang Lv
+
+[STATIC_3D_SCENE]
+
+data_folder = '../' # the path to the data folder created
+input_path  = '../data/RefRESH/BundleFusion/raw'
+tmp_path    = '../data/RefRESH/BundleFusion/tmp'
+output_path = '../data/RefRESH/BundleFusion/render' # the final output folder
+
+output_types = {'depth':True, 'gtflow':True, 'normal':False, 'vblur':False}
+
+# default image width and height
+width     = 640
+height    = 480
+
+# can be overrode
+dataset   = 'bundlefusion'
+scene     = 'apt0'
+stride    = 1
+
+[SYNTH_HUMAN]
+data_folder = '../' # the path to the data folder created
+input_path  = '../data/RefRESH/BundleFusion/render'
+tmp_path    = '../data/RefRESH/BundleFusion_dynamic/tmp'
+output_path = '../data/RefRESH/BundleFusion_dynamic/render'
+
+# the 3D static background basic information
+bg_base_path       = '../data/RefRESH/BundleFusion/render'
+bg_scene           = 'office3'
+
+# background footages
+bg_start = 0    # select a background starting frame
+bg_end = 100    # select a background ending frame
+bg_stride = 1   # stride to sample background pose
+
+# number of foreground objects
+fg_objects = 10         # the number of foreground objects in the entire trajectories
+fg_diversity_avg = 15   
+fg_stride_avg = 30
+fg_frame_number = 100   # the length of trajectory for each segments
+
+output_types       = {'depth':True, 'fg':True, 'gtflow':True, 'normal':False, 'segm':False, 'vblur':False}
+
+smpl_data_folder   = '../smpl_data'
+smpl_data_filename = 'smpl_data.npz'
+clothing_option    = 'all' # grey, nongrey or all
+
+width     = 640
+height    = 480
+
+# subsampling MoCap sequence by selecting every 10th frame, this is a parameter that we can tune when creating different coverage of foreground motions
+fg_stride = 20  # fg motion stride over background motion: fg_stride * bg_stride
+stride   = 50   # percent overlap between clips
+clipsize = 5    # nFrames in each clip, where the random parameters are fixed
