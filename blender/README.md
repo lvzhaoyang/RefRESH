@@ -27,7 +27,7 @@ sh quick_run/render_static_scenes.sh
 Run the parser script to generate the final outputs:
 
 ``` bash
-python parse_static_scene_output.py
+python parse_static_scene.py
 ```
 
 This should generate the rendered outputs given the specific configuration. 
@@ -99,13 +99,13 @@ To generate the rendering of the 3D static scene:
 
 ``` bash
 cd blender
-sh quick_run/render_static_scenes.sh
+sh quick_run/render_humans_from_trajectories.sh
 ```
 
 Run the parser script to generate the final outputs:
 
 ``` bash
-python parse_static_scene_output.py
+python parse_humans_from_trajectories.py
 ```
 
 ### The final output Layout
