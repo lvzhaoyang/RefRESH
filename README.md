@@ -1,10 +1,10 @@
-# RefRESH:
-
-![alt text](data/refresh.png)  
+# RefRESH Toolkit in Blender
 
 ## Summary
 
 The blender toolkit for **REal 3D from REconstruction with Synthetic Humans (RefRESH)**. 
+
+![alt text](data/refresh.png)  
 
 [Video Example of the Created Data][6] | [Project Page][8]
 
