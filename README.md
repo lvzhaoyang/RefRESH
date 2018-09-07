@@ -6,13 +6,13 @@ The blender toolkit for **REal 3D from REconstruction with Synthetic Humans (Ref
 
 ![alt text](data/refresh.png)  
 
-[Video Example of the Created Data][6] | [Project Page][8]
+[Video Example of the Created Data][6] | [Project Page][10] | [Blog][9] | [Learning Rigidity Repository][8]
 
 If you use this code or our generated dataset, please cite the following paper:
 
 **Learning Rigidity in Dynamic Scenes with a Moving Camera for 3D Motion Field Estimation**,
 *Zhaoyang Lv, Kihwan Kim, Alejandro Troccoli, Deqing Sun, James M. Rehg, Jan Kautz*, 
-European Conference on Computer Vision 2018, [ArXiv Preprint][7]
+[European Conference on Computer Vision 2018][7]
 
 ```bibtex
 @inproceedings{Lv18eccv,  
@@ -21,6 +21,12 @@ European Conference on Computer Vision 2018, [ArXiv Preprint][7]
   booktitle = {ECCV},  
   year      = {2018}  
 }
+```
+
+The inference algorithm and relevant networks are located in the [Learning Rigidity repository][8]:
+
+```
+git clone https://github.com/NVlabs/learningrigidity
 ```
 
 ### Contact: 
@@ -37,9 +43,9 @@ Zhaoyang Lv: lvzhaoyang1990@gmail.com
 * [Download existing data (Soon)](https://github.com/lvzhaoyang/RefRESH#download-the-created-refresh-dataset)
 * [Acknowledgement](https://github.com/lvzhaoyang/RefRESH#acknowledgement)
 
-### Note: 
+### Notes: 
 
-* We currently only support loading BundleFusion RGB-D sequences and meshes. Loading different sequences and meshes may result in a change in data loading protocol. Feel free to contribute. 
+* We currently only support loading BundleFusion RGB-D sequences and meshes. Please be aware that loading different sequences and meshes may result in a change in data loading protocol. Feel free to contribute. 
 
 * All codes are tested by Zhaoyang on linux machines and servers. For any other systems, there is no guarantee how to run it and I have no devices to reproduce the relevant issues. 
 
@@ -179,3 +185,5 @@ Our work can not be done without the precedent research efforts. Part of the hum
 [6]: https://youtu.be/MnTHkOCY790?t=3m5s
 [7]: https://arxiv.org/abs/1804.04259
 [8]: https://github.com/NVlabs/learningrigidity
+[9]: https://mlatgt.blog/2018/09/06/learning-rigidity-and-scene-flow-estimation/
+[10]: https://research.nvidia.com/publication/2018-09_Learning-Rigidity-in
