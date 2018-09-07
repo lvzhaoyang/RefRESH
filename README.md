@@ -1,14 +1,18 @@
-# RefRESH:
+# RefRESH Toolkit in Blender
+
+## Summary
 
 The blender toolkit for **REal 3D from REconstruction with Synthetic Humans (RefRESH)**. 
 
-[Video Example of the Created Data][6] | [Project Page][8]
+![alt text](data/refresh.png)  
+
+[Video Example of the Created Data][6] | [Project Page][10] | [Blog][9] | [Learning Rigidity Repository][8]
 
 If you use this code or our generated dataset, please cite the following paper:
 
 **Learning Rigidity in Dynamic Scenes with a Moving Camera for 3D Motion Field Estimation**,
 *Zhaoyang Lv, Kihwan Kim, Alejandro Troccoli, Deqing Sun, James M. Rehg, Jan Kautz*, 
-European Conference on Computer Vision 2018, [ArXiv Preprint][7]
+[European Conference on Computer Vision 2018][7]
 
 ```bibtex
 @inproceedings{Lv18eccv,  
@@ -19,12 +23,37 @@ European Conference on Computer Vision 2018, [ArXiv Preprint][7]
 }
 ```
 
-## Contents 
+The inference algorithm and relevant networks are located in the [Learning Rigidity repository][8]:
 
-* [Dependencies](#Dependencies)
-* [Run Instructions](./blender/README.md)
-* [License](#License)
-* [Acknowledgement](#Acknowledgement)
+```
+git clone https://github.com/NVlabs/learningrigidity
+```
+
+### Contact: 
+
+Zhaoyang Lv: lvzhaoyang1990@gmail.com
+
+### Contents 
+
+* [Dependencies](https://github.com/lvzhaoyang/RefRESH#dependencies)
+* [Prepare 3D static data](https://github.com/lvzhaoyang/RefRESH#prepare-the-3d-static-scene-datasets)
+* [Prepare 3D dynamic data](https://github.com/lvzhaoyang/RefRESH#prepare-your-synthetic-humans)
+* [Run Blender Instructions](./blender/README.md)
+* [License](https://github.com/lvzhaoyang/RefRESH#license)
+* [Download existing data (Soon)](https://github.com/lvzhaoyang/RefRESH#download-the-created-refresh-dataset)
+* [Acknowledgement](https://github.com/lvzhaoyang/RefRESH#acknowledgement)
+
+### Notes: 
+
+* We currently only support loading BundleFusion RGB-D sequences and meshes. Please be aware that loading different sequences and meshes may result in a change in data loading protocol. Feel free to contribute. 
+
+* All codes are tested by Zhaoyang on linux machines and servers. For any other systems, there is no guarantee how to run it and I have no devices to reproduce the relevant issues. 
+
+* Although the rendering code is automatically batch run as we wish, it can still be slow on a single machine. Please consider use a server with multiple CPU cores to do that. 
+
+* There are some small changes after the paper submission to make the rendering process much easier to run and we change the rendering output to the multichannel OpenEXR format. In this way we also generate two pass flow, rather than one in the original data. Please let me know if it generates unexpected results. 
+
+* Currently there is no strict roadmap about how to extend this toolkit, although I might add functionalities to support different foreground objects, more background meshes, only if there is a research need. 
 
 ## Dependencies
 
@@ -156,3 +185,5 @@ Our work can not be done without the precedent research efforts. Part of the hum
 [6]: https://youtu.be/MnTHkOCY790?t=3m5s
 [7]: https://arxiv.org/abs/1804.04259
 [8]: https://github.com/NVlabs/learningrigidity
+[9]: https://mlatgt.blog/2018/09/06/learning-rigidity-and-scene-flow-estimation/
+[10]: https://research.nvidia.com/publication/2018-09_Learning-Rigidity-in
