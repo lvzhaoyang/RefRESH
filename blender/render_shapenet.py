@@ -93,7 +93,7 @@ class ShapeNetRender:
     							('04530566', ''),
     							('04554684', '')];
 
-    def __init__(self, root_path):
+    def __init__(self, root_path, post_fix=''):
         """ The path of shapeNet folder
         """
         self.start_time = time.time()
@@ -101,6 +101,8 @@ class ShapeNetRender:
         self.log_message("Importing ShapeNet models and set up")
 
         self.params = load_file('configs/shapenet_config', 'SHAPENET_MODELS')
+
+        # shapenet_taxonomy = osp.join(root_path, 'taxonomy.json')
 
         shape_ids = self.params['shape_net_ids']
 
@@ -113,6 +115,9 @@ class ShapeNetRender:
             shape_path = osp.join(root_path, shape_id)
 
             self.shape_list += self.load_category_shape_list(shape_path)
+
+        # where all the openexr files are written to
+        self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
 
         self.init_scene()
 
@@ -135,40 +140,75 @@ class ShapeNetRender:
         """ Run rendering script
         """
 
+        info = {
+            'camera_pose':  [],
+            'object_pose':  {},
+            'object_3D_box':{}
+        }
+
+        for name in self.object_list:
+            info['object_pose'][name] = []
+            info['object_3D_box'][name]=[]
+
         get_real_frame = lambda ifr: ifr
         bpy_scene = bpy.context.scene
+        bpy_object= bpy.data.objects
+        bpy_camera= bpy_object['Camera']
+
+        num_views = self.params['trajectory']['views']
         ''' ---------------------- LOOP TO RENDER  ------------------------- '''
-        for frame_idx in range(0, self.total_num):
+        for frame_idx in range(0, num_views):
             bpy_scene.frame_set(get_real_frame(frame_idx))
 
-            bpy_scene.render.filepath = join(self.tmp_path, 'Image%04d.exr' % get_real_frame(frame_idx))
+            bpy_scene.render.filepath = osp.join(self.tmp_path, 'Image%04d.exr' % get_real_frame(frame_idx))
 
             self.log_message("Rendering frame %d" % frame_idx)
             # Render
             bpy.ops.render.render(write_still=True)
+            # camera pose
+            info['camera_pose'].append(
+                np.array(bpy_utils.blender_to_world(bpy_camera.matrix_world)) )
+
+            for name in self.object_list:
+                # the object pose
+                info['object_pose'][name].append(
+                    np.array(bpy_utils.blender_to_world(bpy_object[name].matrix_world))
+                )
+                # The corners are in allocentric coordinate.
+                corners = np.array(bpy_object[name].bound_box)
+                info['object_3D_box'][name].append(corners)
 
     def init_render_settings(self):
         """ Set up the the blender (cycles) render engine
         """
-
         self.log_message("Setup Blender Cycles Render Engine")
 
         bpy_scene = bpy.context.scene
         bpy_render = bpy_scene.render
 
         bpy_scene.cycles.shading_system = True
-        bpy_scene.use_nodes = True
 
         bpy_render.use_overwrite = False
         bpy_render.use_placeholder = True
-        bpy_render.use_antialiasing = False
+        bpy_render.use_antialiasing = True
 
         bpy_render.layers["RenderLayer"].use_pass_vector = self.params['output_types']['gtflow']
         bpy_render.layers["RenderLayer"].use_pass_normal = self.params['output_types']['normal']
         bpy_render.layers["RenderLayer"].use_pass_z = self.params['output_types']['depth']
         bpy_render.layers['RenderLayer'].use_pass_emit   = False
 
+        # set render size
+        bpy_render.resolution_x = self.params['width']
+        bpy_render.resolution_y = self.params['height']
+
+        bpy_render.resolution_percentage = 100
+        # bpy_render.image_settings.file_format = 'PNG'
+        bpy_render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
+        bpy_render.image_settings.color_mode = 'RGBA'
+
     def init_scene(self):
+        """ Initialize the objects in the scene
+        """
 
         self.log_message("Initialize the scene")
 
@@ -181,9 +221,44 @@ class ShapeNetRender:
         num_obj = self.params['num_obj']
         shape_ids = np.random.randint(0, len(self.shape_list) - 1, num_obj)
 
+        view_params = self.params['trajectory']['views']
+        obj_motion_t_max = self.params['obj_motions']['t_max']
+        obj_motion_r_max = self.params['obj_motions']['r_max']
+
+        self.object_list = []
         for shape_id in shape_ids:
             obj, obj_path = self.shape_list[shape_id]
             bpy.ops.import_scene.obj(filepath=obj_path)
+
+            # combine meshes of the imported model (which are composed of different parts)
+            for obj_parts in bpy.context.scene.objects:
+                if obj_parts.type == 'MESH' and obj_parts.name[:5] != 'Model':
+                    obj_parts.select = True
+                    bpy.context.scene.objects.active = obj_parts
+                else:
+                    obj_parts.select = False
+
+            bpy.ops.object.join()
+            current_obj = bpy.context.selected_objects[0]
+            current_obj.name = 'Model_{:}'.format(obj)
+
+            self.object_list.append(current_obj.name)
+
+            # set the obj pose (to be random)
+            for frame_idx in range(0, view_params, 10):
+                azimuth_deg = np.random.uniform(-obj_motion_r_max, obj_motion_r_max)
+                theta_deg = np.random.uniform(-obj_motion_r_max, obj_motion_r_max)
+                radius = np.random.uniform(0, obj_motion_t_max)
+                current_obj.location = bpy_utils.allocentric_pose(radius, azimuth_deg, theta_deg)
+
+                current_obj.rotation_mode = 'QUATERNION'
+                yaw_deg = np.random.uniform(-obj_motion_r_max, obj_motion_r_max) / 180
+                pitch_deg=np.random.uniform(-obj_motion_r_max, obj_motion_r_max) / 180
+                roll_deg =np.random.uniform(-obj_motion_r_max, obj_motion_r_max) / 180
+                current_obj.rotation_quaternion = bpy_utils.ypr2quaternion(yaw_deg, pitch_deg, roll_deg)
+
+                current_obj.keyframe_insert('location', frame=frame_idx)
+                current_obj.keyframe_insert('rotation_quaternion', frame=frame_idx)
 
         self.set_environment_lighting()
 
@@ -202,8 +277,6 @@ class ShapeNetRender:
         bpy_utils.set_intrinsic(K, bpy_camera, bpy_scene, self.params['height'], self.params['width'])
 
         # set the camera trajectory according to the ground truth trajectory
-        bpy_scene = bpy.context.scene
-
         traj_settings = self.params['trajectory']
         if traj_settings['type'] == 'ORBIT':
             cam_constraint = bpy_camera.constraints.new(type='TRACK_TO')
@@ -237,7 +310,7 @@ class ShapeNetRender:
             pass
 
         elif traj_settings['type'] == 'Existing':
-            
+
             for frame_idx in range(0, self.total_num):
 
                 bpy_scene.frame_set(frame_idx)
@@ -261,8 +334,8 @@ class ShapeNetRender:
         # set environment lighting
         light_settings = bpy.context.scene.world.light_settings
         light_settings.use_environment_light = True
-        light_settings.environment_energy = np.random.uniform(self.params['env_light_low'],
-            self.params['env_light_high'])
+        light_settings.environment_energy = np.random.uniform(self.params['env_light_min'],
+            self.params['env_light_max'])
         light_settings.environment_color = 'PLAIN'
 
     def log_message(self, message):
@@ -282,4 +355,4 @@ if __name__ == '__main__':
 
     shape_net_render = ShapeNetRender(shapenet_path)
 
-    #shape_net_render.run_rendering()
+    shape_net_render.run_rendering()

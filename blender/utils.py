@@ -113,4 +113,4 @@ def ypr2quaternion(yaw, pitch, roll):
     q2 = c1 * c2 * s3 - s1 * s2 * c3
     q3 = c1 * s2 * c3 + s1 * c2 * s3
     q4 = s1 * c2 * c3 - c1 * s2 * s3
-    return (q1, q2, q3, q4)
+    return Vector((q1, q2, q3, q4))
