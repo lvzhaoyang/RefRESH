@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 from mathutils import Matrix, Vector, Quaternion, Euler
+import math
 
 def world_to_blender(T):
     origin = Matrix(((1, 0, 0, 0),
@@ -73,3 +74,43 @@ def set_intrinsic(K, bpy_camera, bpy_scene, H, W):
 
     # we will use the default blender camera focal length
     bpy_camera.data.lens = fx / s_u
+
+def parent_obj_to_camera(bpy_camera, bpy_scene, bpy_origin):
+    """ Set the camera's parent to be origin
+    """
+    origin = (0, 0, 0)
+    bpy_origin.location = origin
+    bpy_camera.parent = bpy_origin  # setup parenting
+
+    bpy_scene.objects.link(bpy_origin)
+    bpy_scene.objects.active = bpy_origin
+    return bpy_origin
+
+def allocentric_pose(dist, azimuth_deg, elevation_deg):
+    """ Set the allocentric (camera) pose in Polar coordinate
+    """
+    phi = float(elevation_deg) / 180 * math.pi
+    theta = float(azimuth_deg) / 180 * math.pi
+    x = (dist * math.cos(theta) * math.cos(phi))
+    y = (dist * math.sin(theta) * math.cos(phi))
+    z = (dist * math.sin(phi))
+    return Vector((x, y, z))
+
+def ypr2quaternion(yaw, pitch, roll):
+    """ Transform the (yaw, pitch, roll) representation to quaternion
+    Implementation from RenderForCNN (quaternionFromYawPitchRoll):
+    https://github.com/ShapeNet/RenderForCNN/blob/master/render_pipeline/render_model_views.py
+    Check their license (MIT):
+    https://github.com/ShapeNet/RenderForCNN/blob/master/LICENSE
+    """
+    c1 = math.cos(yaw / 2.0)
+    c2 = math.cos(pitch / 2.0)
+    c3 = math.cos(roll / 2.0)
+    s1 = math.sin(yaw / 2.0)
+    s2 = math.sin(pitch / 2.0)
+    s3 = math.sin(roll / 2.0)
+    q1 = c1 * c2 * c3 + s1 * s2 * s3
+    q2 = c1 * c2 * s3 - s1 * s2 * c3
+    q3 = c1 * s2 * c3 + s1 * c2 * s3
+    q4 = s1 * c2 * c3 - c1 * s2 * s3
+    return (q1, q2, q3, q4)
