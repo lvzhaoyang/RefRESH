@@ -22,10 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import sys, os, time
+import sys, os, time, random
 import os.path as osp
 import numpy as np
 import bpy
+
+from numpy.random import uniform as rand_uniform
+from pickle import load, dump
 
 sys.path.insert(0, ".")
 import utils as bpy_utils
@@ -120,7 +123,6 @@ class ShapeNetRender:
         self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
 
         self.init_scene()
-
         self.init_render_settings()
 
     def load_category_shape_list(self, path):
@@ -156,6 +158,7 @@ class ShapeNetRender:
         bpy_camera= bpy_object['Camera']
 
         num_views = self.params['trajectory']['views']
+
         ''' ---------------------- LOOP TO RENDER  ------------------------- '''
         for frame_idx in range(0, num_views):
             bpy_scene.frame_set(get_real_frame(frame_idx))
@@ -178,15 +181,21 @@ class ShapeNetRender:
                 corners = np.array(bpy_object[name].bound_box)
                 info['object_3D_box'][name].append(corners)
 
+        ''' ---------------------- SAVE 3D OUTPUT  ------------------------- '''
+        dataset_path = osp.join(self.tmp_path, 'info.pkl')
+        with open(dataset_path, 'wb') as output:
+            dump(info, output)
+
     def init_render_settings(self):
         """ Set up the the blender (cycles) render engine
         """
-        self.log_message("Setup Blender Cycles Render Engine")
+        self.log_message("Setup Blender (Cycles) Render Engine")
 
         bpy_scene = bpy.context.scene
         bpy_render = bpy_scene.render
 
-        bpy_scene.cycles.shading_system = True
+        # Turn off the cycles rendering system
+        # bpy_scene.cycles.shading_system = True
 
         bpy_render.use_overwrite = False
         bpy_render.use_placeholder = True
@@ -194,6 +203,7 @@ class ShapeNetRender:
 
         bpy_render.layers["RenderLayer"].use_pass_vector = self.params['output_types']['gtflow']
         bpy_render.layers["RenderLayer"].use_pass_normal = self.params['output_types']['normal']
+        bpy_render.layers["RenderLayer"].use_pass_object_index = self.params['output_types']['segm']
         bpy_render.layers["RenderLayer"].use_pass_z = self.params['output_types']['depth']
         bpy_render.layers['RenderLayer'].use_pass_emit   = False
 
@@ -212,10 +222,34 @@ class ShapeNetRender:
 
         self.log_message("Initialize the scene")
 
-        # delete the default cube (which held the material)
+        # change the cube to be the default 3D background (which held the material)
         bpy.ops.object.select_all(action='DESELECT')
-        bpy.data.objects['Cube'].select = True
-        bpy.ops.object.delete()
+        bpy_cube = bpy.data.objects['Cube']
+        bpy_cube.select = True
+        bs = self.params['box_scale']
+        bpy_cube.scale = bs, bs, bs
+        # bpy.ops.object.delete()
+#
+        # bpy_cube.join_uvs()
+        bpy.ops.uv.smart_project()
+        bpy.context.scene.objects.active = bpy_cube
+
+        # create background material map
+        bg_material_uv = self.make_material('Random',
+            diffuse = [rand_uniform(0.5,1), rand_uniform(0.5,1), rand_uniform(0.5,1)],
+            specular= [rand_uniform(0,0.5), rand_uniform(0,0.5), rand_uniform(0,0.5)],
+            alpha = 1.0)
+        bg_material_uv.type = 'SURFACE'
+
+        bg_material_path = self.params['background_material_path']
+        bg_material_images = os.listdir(bg_material_path)
+        bg_material_img = random.choice(bg_material_images)
+        uvimg = bpy.data.images.load(osp.join(bg_material_path, bg_material_img))
+        bg_texture = bpy.data.textures.new('background_texture', 'IMAGE')
+        bg_texture.image = uvimg
+        bpy_cube.material_slots[0].material = bg_material_uv
+        slot =  bpy.context.object.active_material.texture_slots.add()
+        slot.texture = bg_texture
 
         # load a random number of objects into the scene
         num_obj = self.params['num_obj']
@@ -225,42 +259,59 @@ class ShapeNetRender:
         obj_motion_t_max = self.params['obj_motions']['t_max']
         obj_motion_r_max = self.params['obj_motions']['r_max']
 
+        bpy_objects = bpy.context.scene.objects
+
         self.object_list = []
         for shape_id in shape_ids:
+            existing_objects = bpy_objects.keys()
+
             obj, obj_path = self.shape_list[shape_id]
             bpy.ops.import_scene.obj(filepath=obj_path)
-
             # combine meshes of the imported model (which are composed of different parts)
-            for obj_parts in bpy.context.scene.objects:
-                if obj_parts.type == 'MESH' and obj_parts.name[:5] != 'Model':
+            for obj_parts in bpy_objects:
+                if obj_parts.name not in existing_objects:
                     obj_parts.select = True
                     bpy.context.scene.objects.active = obj_parts
                 else:
                     obj_parts.select = False
 
             bpy.ops.object.join()
+            if len(bpy.context.selected_objects) < 1:
+                continue
             current_obj = bpy.context.selected_objects[0]
             current_obj.name = 'Model_{:}'.format(obj)
 
             self.object_list.append(current_obj.name)
 
+            # current_obj.game.physics_type = 'RIGID_BODY'
+            # current_obj.game.use_collision_bounds = 1
+
             # set the obj pose (to be random)
             for frame_idx in range(0, view_params, 10):
-                azimuth_deg = np.random.uniform(-obj_motion_r_max, obj_motion_r_max)
-                theta_deg = np.random.uniform(-obj_motion_r_max, obj_motion_r_max)
-                radius = np.random.uniform(0, obj_motion_t_max)
+                azimuth_deg = rand_uniform(-obj_motion_r_max, obj_motion_r_max)
+                theta_deg = rand_uniform(-obj_motion_r_max, obj_motion_r_max)
+                radius = rand_uniform(0, obj_motion_t_max)
                 current_obj.location = bpy_utils.allocentric_pose(radius, azimuth_deg, theta_deg)
 
                 current_obj.rotation_mode = 'QUATERNION'
-                yaw_deg = np.random.uniform(-obj_motion_r_max, obj_motion_r_max) / 180
-                pitch_deg=np.random.uniform(-obj_motion_r_max, obj_motion_r_max) / 180
-                roll_deg =np.random.uniform(-obj_motion_r_max, obj_motion_r_max) / 180
+                yaw_deg  = rand_uniform(-obj_motion_r_max, obj_motion_r_max) / 180
+                pitch_deg= rand_uniform(-obj_motion_r_max, obj_motion_r_max) / 180
+                roll_deg = rand_uniform(-obj_motion_r_max, obj_motion_r_max) / 180
                 current_obj.rotation_quaternion = bpy_utils.ypr2quaternion(yaw_deg, pitch_deg, roll_deg)
 
                 current_obj.keyframe_insert('location', frame=frame_idx)
                 current_obj.keyframe_insert('rotation_quaternion', frame=frame_idx)
 
-        self.set_environment_lighting()
+        # self.set_environment_lighting()
+
+        # set four point light inside of the cube
+        bpy.ops.object.select_by_type(type='LAMP')
+        bpy.ops.object.delete(use_global=False)
+        # bpy.ops.object.lamp_add(type='POINT', view_align=False, location=(0, 0, 0))
+        bpy.ops.object.lamp_add(type='POINT', view_align=False, location=(rand_uniform(-bs, 0), rand_uniform(0, 0), 0))
+        bpy.ops.object.lamp_add(type='POINT', view_align=False, location=(rand_uniform(0, bs), rand_uniform(0, 0), 0))
+        bpy.ops.object.lamp_add(type='POINT', view_align=False, location=(rand_uniform(0, 0), rand_uniform(-bs, 0), 0))
+        bpy.ops.object.lamp_add(type='POINT', view_align=False, location=(rand_uniform(0, 0), rand_uniform(0, bs), 0))
 
         self.set_camera_parameters()
 
@@ -319,11 +370,6 @@ class ShapeNetRender:
                 bpy_camera.keyframe_insert('location', frame=frame_idx)
                 bpy_camera.keyframe_insert('rotation_euler', frame=frame_idx)
 
-                # set a point light to move together with the camera
-                lamp.matrix_world = bpy_camera.matrix_world
-                lamp.keyframe_insert('location', frame=frame_idx)
-                lamp.keyframe_insert('rotation_euler', frame=frame_idx)
-
                 bpy_scene.update()
 
     def set_environment_lighting(self):
@@ -334,9 +380,21 @@ class ShapeNetRender:
         # set environment lighting
         light_settings = bpy.context.scene.world.light_settings
         light_settings.use_environment_light = True
-        light_settings.environment_energy = np.random.uniform(self.params['env_light_min'],
+        light_settings.environment_energy = rand_uniform(self.params['env_light_min'],
             self.params['env_light_max'])
         light_settings.environment_color = 'PLAIN'
+
+    def make_material(self, name, diffuse, specular, alpha):
+        mat = bpy.data.materials.new(name)
+        mat.diffuse_color = diffuse
+        mat.diffuse_shader = 'LAMBERT'
+        mat.diffuse_intensity = 0.8
+        mat.specular_color = specular
+        mat.specular_shader = 'BLINN'
+        mat.specular_intensity = 0.3
+        mat.alpha = alpha
+        mat.ambient = 1
+        return mat
 
     def log_message(self, message):
         elapsed_time = time.time() - self.start_time
@@ -350,9 +408,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate 3D shapes')
     parser.add_argument('--shape_id', type=str, default='None',
         help='the shapenet id')
+    parser.add_argument('--seq_num', type=int, default=1,
+        help='the number of sequences being generated')
 
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
-    shape_net_render = ShapeNetRender(shapenet_path)
-
-    shape_net_render.run_rendering()
+    for idx in range(args.seq_num):
+        post_fix = "{:06d}".format(idx)
+        shape_net_render = ShapeNetRender(shapenet_path, post_fix)
+        shape_net_render.run_rendering()
