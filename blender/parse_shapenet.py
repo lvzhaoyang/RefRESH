@@ -23,8 +23,10 @@ SOFTWARE.
 """
 
 import sys, os, time, argparse, random
-import numpy as np
 import io_utils
+import numpy as np
+import os.path as osp
+import matplotlib.pyplot as plt
 
 from pickle import load, dump
 from os.path import join, dirname, realpath, exists
@@ -37,7 +39,7 @@ class ShapeNetSceneParser:
 
     def __init__(self, post_fix = ''):
 
-        self.params = io_utils.load_file('config/shapenet_config', 'SHAPENET_MODELS')
+        self.params = io_utils.load_file('configs/shapenet_config', 'SHAPENET_MODELS')
 
         self.output_path = osp.join(self.params['output_path'], post_fix)
         self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
@@ -46,25 +48,26 @@ class ShapeNetSceneParser:
 
         print('generate output for {:s}'.format(self.output_path))
 
-        rendered_dir        = join(self.output_path, 'rendered')
-        depth_dir           = join(self.output_path, 'depth')
-        flow_forward_dir    = join(self.output_path, 'flow_forward')
-        flow_backward_dir   = join(self.output_path, 'flow_backward')
-        flowviz_forward_dir = join(self.output_path, 'flow_vis_forward')
-        flowviz_backward_dir= join(self.output_path, 'flow_vis_backward')
-        invalid_dir         = join(self.output_path, 'invalid')
+        info = {'color':         [],
+                'depth':         [],
+                'pose':          [],
+                'object_mask':   [],
+                'object_2D_box': [],
+                'invalid':       [] }
 
-        info = {'raw_color':        [],
-                'raw_depth':        [],
-                'rendered':         [],
-                'depth':            [],
-                'flow_forward':     [],
-                'flow_backward':    [],
-                'flowviz_forward':  [],
-                'flowviz_backward': [],
-                'pose':             [],
-                'invalid':          [],
-                'calib':            self.bg_calib}
+        K = self.params['pinhole']
+        info['calib'] = [K['fx'], K['fy'], K['cx'], K['cy']]
+
+        with open(osp.join(self.tmp_path, 'info.pkl'), 'rb') as f:
+            files = load(f)
+            info['pose'] = files['camera_pose']
+            info['object_pose'] = files['object_pose']
+            info['object_3D_box'] = files['object_3D_box']
+
+        color_dir    = join(self.output_path, 'color')
+        depth_dir    = join(self.output_path, 'depth')
+        instance_dir = join(self.output_path, 'instance')
+        invalid_dir  = join(self.output_path, 'invalid')
 
         for idx in range(0, self.params['trajectory']['views']):
 
@@ -74,44 +77,37 @@ class ShapeNetSceneParser:
 
             invalid_mask = np.zeros(size, np.uint8)
 
-            forward_flow, backward_flow = self.__read_flow(exr, size)
-            flow_forward_vis = io_utils.flow_visualize(forward_flow)
-            flow_backward_vis= io_utils.flow_visualize(backward_flow)
-
-            # process depth
-            depth, invalid_depth = self.__read_depth(exr, size)
-            invalid_mask[invalid_depth] = 255
-
-            color = self.__read_color(exr, size)
-
             output_name = str(idx).zfill(6)
             print('generate file: {:}'.format(output_name))
-            filename_flo = output_name+'.flo'
             filename_png = output_name+'.png'
-            flow_forward_file       = join(flow_forward_dir, filename_flo)
-            flow_backward_file      = join(flow_backward_dir,filename_flo)
-            flowviz_forward_file    = join(flowviz_forward_dir, filename_png)
-            flowviz_backward_file   = join(flowviz_backward_dir,filename_png)
-            depth_file              = join(depth_dir,   filename_png)
-            invalid_mask_file       = join(invalid_dir, filename_png)
-            rendered_color_file     = join(rendered_dir,filename_png)
 
-            io_utils.flow_write(flow_forward_file,  forward_flow)
-            io_utils.flow_write(flow_backward_file, backward_flow)
-            io_utils.image_write(flowviz_forward_file, flow_forward_vis)
-            io_utils.image_write(flowviz_backward_file,flow_backward_vis)
-            io_utils.pngdepth_write(depth_file, depth)
-            io_utils.image_write(invalid_mask_file, invalid_mask)
+            # process rendered image
+            color = self.__read_color(exr, size)
+            rendered_color_file = join(color_dir,filename_png)
             io_utils.image_write(rendered_color_file, color)
+            info['color'].append(rendered_color_file)
 
-            info['rendered'].append(rendered_color_file)
-            info['flow_forward'].append(flow_forward_file)
-            info['flow_backward'].append(flow_backward_file)
-            info['flowviz_forward'].append(flowviz_forward_file)
-            info['flowviz_backward'].append(flowviz_forward_file)
-            info['depth'].append(depth_file)
+            if self.params['output_types']['depth']:
+                depth = self.__read_depth(exr, size)
+                depth_file = join(depth_dir, filename_png)
+                io_utils.pngdepth_write(depth_file, depth)
+                info['depth'].append(depth_file)
+
+            if self.params['output_types']['segm']: # instance segmentation
+                obj_mask = self.__read_object_mask(exr, size)
+                obj_boxes2D = self.__get_bounding_box(obj_mask)
+                instance_file = join(instance_dir, filename_png)
+                io_utils.pnginstance_write(instance_file, obj_mask)
+                info['object_mask'].append(instance_file)
+                info['object_2D_box'].append(obj_boxes2D)
+
+            invalid_mask_file = join(invalid_dir, filename_png)
+            io_utils.image_write(invalid_mask_file, invalid_mask)
             info['invalid'].append(invalid_mask_file)
-            info['pose'].append(self.cam_poses[idx])
+
+        dataset_path = osp.join(self.output_path, 'info.pkl')
+        with open(dataset_path, 'wb') as output:
+            dump(info, output)
 
     def __read_flow(self, exr, size):
         """ Read the forward flow and backward flow from the exr file
@@ -130,10 +126,7 @@ class ShapeNetSceneParser:
         """ Read depth from the exr file
         """
         depth = np.reshape(np.fromstring(exr.channel('RenderLayer.Depth.Z', FLOAT), dtype=np.float32), size)
-        invalid_depth = depth > 1e2
-        depth[invalid_depth] = 0 # set the depth in invalid region to be 0
-
-        return depth, invalid_depth
+        return depth
 
     def __read_color(self, exr, size):
         """ Read rendered color image from the exr file
@@ -149,3 +142,64 @@ class ShapeNetSceneParser:
         cc_a = np.reshape((cc_a * 255 / np.max(cc_a)).astype('uint8'), size)
 
         return np.dstack((cc_r, cc_g, cc_b, cc_a))
+
+    def __read_object_mask(self, exr, size):
+        """ read the segmentation of the objects from the exr file
+        """
+
+        index = np.fromstring(exr.channel('RenderLayer.IndexOB.X', FLOAT), dtype=np.float32)
+        index = np.reshape(index, size)
+
+        return index
+
+    def __get_bounding_box(self, index_image):
+        """ get the object bounding box in 2D
+        """
+        max_index = int(index_image.max())
+
+        H, W = index_image.shape
+        rows = np.linspace(0, H-1, H)
+        cols = np.linspace(0, W-1, W)
+        vs, us = np.meshgrid(cols, rows)
+
+        box_info = {}
+        for idx in range(1, max_index+1):
+            obj_mask = (index_image == idx)
+            u_mask = us[obj_mask]
+            v_mask = vs[obj_mask]
+            lu, lv = u_mask.min(), v_mask.min()
+            ru, rv = u_mask.max(), v_mask.max()
+
+            box_info['Model_{:}'.format(idx)] = [lu, lv, ru, rv]
+
+        return box_info
+
+    def __visualize(self, color, obj_boxes2D):
+        """ Visualize the ground truth of
+        """
+        fig, ax = plt.subplots(1)
+        ax.imshow(color)
+        import matplotlib.patches as patches
+        for k, v in obj_boxes2D.items():
+            rect = patches.Rectangle((v[1], v[0]), v[3]-v[1], v[2]-v[0],
+                linewidth=1, edgecolor='r', facecolor='none')
+            ax.add_patch(rect)
+        plt.show()
+
+if __name__ == '__main__':
+
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate 3D shapes')
+    parser.add_argument('--shape_id', type=str, default='None',
+        help='the shapenet id')
+    parser.add_argument('--seq_num', type=int, default=1,
+        help='the number of sequences being generated')
+
+    args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
+
+    for idx in range(args.seq_num):
+        post_fix = "{:06d}".format(idx)
+
+        shapenet_parser = ShapeNetSceneParser(post_fix)
+
+        shapenet_parser.run()

@@ -122,8 +122,9 @@ class ShapeNetRender:
         # where all the openexr files are written to
         self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
 
-        self.init_scene()
         self.init_render_settings()
+
+        self.init_scene()
 
     def load_category_shape_list(self, path):
         """ load shapes from one category
@@ -262,6 +263,7 @@ class ShapeNetRender:
         bpy_objects = bpy.context.scene.objects
 
         self.object_list = []
+        obj_index = 1
         for shape_id in shape_ids:
             existing_objects = bpy_objects.keys()
 
@@ -278,9 +280,12 @@ class ShapeNetRender:
             bpy.ops.object.join()
             if len(bpy.context.selected_objects) < 1:
                 continue
-            current_obj = bpy.context.selected_objects[0]
-            current_obj.name = 'Model_{:}'.format(obj)
 
+            current_obj = bpy.context.selected_objects[0]
+            current_obj.name = 'Model_{:}'.format(obj_index)
+            current_obj.pass_index = obj_index
+            obj_index += 1
+            
             self.object_list.append(current_obj.name)
 
             # current_obj.game.physics_type = 'RIGID_BODY'

@@ -72,10 +72,14 @@ def pngdepth_read(filename):
 
 def pngdepth_write(filename, depth):
     # this is specifically for writing depth in 16-bit png
-    from cv2 import imwrite as depth_write 
+    from cv2 import imwrite as depth_write
     create_directory(filename)
     # we need to save it as uint16
-    depth_write(filename, (depth.copy() * 1e3).astype(np.uint16)) 
+    depth_write(filename, (depth.copy() * 1e3).astype(np.uint16))
+
+def pnginstance_write(filename, instance):
+    create_directory(filename)
+    imsave(filename, instance.astype(np.uint8))
 
 def readPFM(file):
     """ read the file in pfm format
