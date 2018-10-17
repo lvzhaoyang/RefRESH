@@ -176,11 +176,11 @@ class ShapeNetRender:
             for name in self.object_list:
                 # the object pose
                 info['object_pose'][name].append(
-                    np.array(bpy_utils.blender_to_world(bpy_object[name].matrix_world))
+                    np.array(bpy_utils.blender_to_world(bpy_object[name].matrix_world)).copy()
                 )
                 # The corners are in allocentric coordinate.
                 corners = np.array(bpy_object[name].bound_box)
-                info['object_3D_box'][name].append(corners)
+                info['object_3D_box'][name].append(corners.copy())
 
         ''' ---------------------- SAVE 3D OUTPUT  ------------------------- '''
         dataset_path = osp.join(self.tmp_path, 'info.pkl')
@@ -285,14 +285,14 @@ class ShapeNetRender:
             current_obj.name = 'Model_{:}'.format(obj_index)
             current_obj.pass_index = obj_index
             obj_index += 1
-            
+
             self.object_list.append(current_obj.name)
 
             # current_obj.game.physics_type = 'RIGID_BODY'
             # current_obj.game.use_collision_bounds = 1
 
             # set the obj pose (to be random)
-            for frame_idx in range(0, view_params, 10):
+            for frame_idx in range(0, view_params+1, 10):
                 azimuth_deg = rand_uniform(-obj_motion_r_max, obj_motion_r_max)
                 theta_deg = rand_uniform(-obj_motion_r_max, obj_motion_r_max)
                 radius = rand_uniform(0, obj_motion_t_max)
@@ -359,11 +359,25 @@ class ShapeNetRender:
                 bpy_camera.keyframe_insert('rotation_euler', frame=frame_idx)
 
                 bpy_scene.update()
-
                 azimuth_deg += keyframe_deg
 
-        elif traj_settings['type'] == 'LINE':
-            pass
+        elif traj_settings['type'] == 'STATIC':
+            cam_constraint = bpy_camera.constraints.new(type='TRACK_TO')
+            cam_constraint.track_axis = 'TRACK_NEGATIVE_Z'
+            cam_constraint.up_axis = 'UP_Y'
+            bpy_track_origin = bpy.data.objects.new("Empty", None)
+            bpy_track_origin = bpy_utils.parent_obj_to_camera(bpy_camera, bpy_scene, bpy_track_origin)
+            cam_constraint.target = bpy_track_origin
+
+            # the distance of the camera to the center of the object
+            radius = traj_settings['radius']
+            azimuth_deg = 0
+            elevation_deg = 0
+            theta_deg = 0
+            bpy_camera.location = bpy_utils.allocentric_pose(radius, azimuth_deg, theta_deg)
+            bpy_camera.keyframe_insert('location', frame=0)
+            bpy_camera.keyframe_insert('rotation_euler', frame=0)
+            bpy_scene.update()
 
         elif traj_settings['type'] == 'Existing':
 
@@ -405,6 +419,9 @@ class ShapeNetRender:
         elapsed_time = time.time() - self.start_time
         print("[%.2f s] %s" % (elapsed_time, message))
 
+def reset_blend():
+    bpy.ops.wm.read_factory_settings()
+
 if __name__ == '__main__':
 
     shapenet_path = '/is/sg/zlv/data-avg/datasets/ShapeNetCore.v1'
@@ -415,10 +432,16 @@ if __name__ == '__main__':
         help='the shapenet id')
     parser.add_argument('--seq_num', type=int, default=1,
         help='the number of sequences being generated')
+    parser.add_argument('--start_index', type=int, default=0)
 
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
+    # from parse_shapenet import ShapeNetSceneParser
+
     for idx in range(args.seq_num):
-        post_fix = "{:06d}".format(idx)
+        post_fix = "{:06d}".format(idx+args.start_index)
         shape_net_render = ShapeNetRender(shapenet_path, post_fix)
         shape_net_render.run_rendering()
+        # shapenet_parser = ShapeNetSceneParser(post_fix)
+        # shapenet_parser.run()
+        reset_blend()

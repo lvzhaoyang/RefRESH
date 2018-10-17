@@ -6,12 +6,12 @@
 tmp_path      = '../data/ShapeNet/tmp'
 output_path   = '../data/ShapeNet/final'
 
-output_types  = {'depth':True, 'segm':True, 'gtflow':False, 'normal':False, 'vblur':False}
+output_types  = {'depth':True, 'segm':True, 'gtflow':True, 'normal':False, 'vblur':False}
 
 shape_net_ids = ['02691156', '02834778', '03790512', '02924116', '02958343']
 
 # The number of objects in the visible scene
-num_obj   = 2
+num_obj   = 1
 
 # The environment setting
 box_scale = 3
@@ -21,10 +21,11 @@ background_material_path = '../data/default_textures'
 width     = 640
 height    = 480
 
-pinhole   = {'fx': 100, 'fy': 100, 'cx':320, 'cy':240}
+pinhole   = {'fx': 1000, 'fy': 1000, 'cx':320, 'cy':240}
 
-# options for the trajectory type
-trajectory  =  {'type': 'ORBIT', 'radius': 1.5, 'views': 50}
+# options for the camera trajectory
+#trajectory = {'type': 'ORBIT', 'radius': 1.5, 'views': 10}
+trajectory = {'type': 'STATIC','radius': 1.5, 'views': 50}
 
 # set the environment lighting distribution (uniform)
 env_light_min = 0.8

@@ -26,7 +26,6 @@ import sys, os, time, argparse, random
 import io_utils
 import numpy as np
 import os.path as osp
-import matplotlib.pyplot as plt
 
 from pickle import load, dump
 from os.path import join, dirname, realpath, exists
@@ -34,6 +33,9 @@ from scipy.misc import imread
 
 import OpenEXR, Imath
 FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+
+sys.path.insert(0, ".")
+from geometry import depth2flow
 
 class ShapeNetSceneParser:
 
@@ -53,6 +55,7 @@ class ShapeNetSceneParser:
                 'pose':          [],
                 'object_mask':   [],
                 'object_2D_box': [],
+                'object_poses_allocentric': {},
                 'invalid':       [] }
 
         K = self.params['pinhole']
@@ -61,8 +64,9 @@ class ShapeNetSceneParser:
         with open(osp.join(self.tmp_path, 'info.pkl'), 'rb') as f:
             files = load(f)
             info['pose'] = files['camera_pose']
-            info['object_pose'] = files['object_pose']
+            # info['object_pose'] = files['object_pose']
             info['object_3D_box'] = files['object_3D_box']
+            object_poses = files['object_pose']
 
         color_dir    = join(self.output_path, 'color')
         depth_dir    = join(self.output_path, 'depth')
@@ -100,6 +104,37 @@ class ShapeNetSceneParser:
                 io_utils.pnginstance_write(instance_file, obj_mask)
                 info['object_mask'].append(instance_file)
                 info['object_2D_box'].append(obj_boxes2D)
+
+            if self.params['output_types']['gtflow']:
+                forward_flow, backward_flow = self.__read_flow(exr, size)
+
+            # import matplotlib.pyplot as plt
+            # for obj_name, obj_poses in object_poses.items():
+            #     cam_pose_this = info['pose'][idx]
+            #     cam_pose_next = info['pose'][idx+1]
+            #     obj_pose_this = obj_poses[idx]
+            #     obj_pose_next = obj_poses[idx+1]
+            #
+            #     import functools
+            #     transform = functools.reduce(np.dot,
+            #     [np.linalg.inv(cam_pose_next), obj_pose_next,
+            #      np.linalg.inv(obj_pose_this), cam_pose_this])
+            #
+            #     # get the correct transform between the camrea and the pose
+            #     # sanity check of the object poses
+            #     K_mat = np.eye(4)
+            #     K_mat[0,0], K_mat[1,1], K_mat[0,2], K_mat[1,2] = K['fx'], K['fy'], K['cx'], K['cy']
+            #     object_flow = depth2flow(depth, K_mat, transform)
+            #     flow_diff_ratio = np.abs((object_flow - forward_flow)/object_flow)
+            #
+            #     print(obj_name)
+            #     plt.figure()
+            #     plt.imshow(object_flow[:,:,0])
+            #     plt.figure()
+            #     plt.imshow(np.clip(flow_diff_ratio[:,:,0], -400, 400))
+            #     plt.figure()
+            #     plt.imshow(np.clip(flow_diff_ratio[:,:,1], -400, 400))
+            #     plt.show()
 
             invalid_mask_file = join(invalid_dir, filename_png)
             io_utils.image_write(invalid_mask_file, invalid_mask)
@@ -167,10 +202,13 @@ class ShapeNetSceneParser:
             obj_mask = (index_image == idx)
             u_mask = us[obj_mask]
             v_mask = vs[obj_mask]
-            lu, lv = u_mask.min(), v_mask.min()
-            ru, rv = u_mask.max(), v_mask.max()
+            if u_mask.size == 0 or v_mask.size == 0:
+                box_info['Model_{:}'.format(idx)] = [0,0,0,0]
+            else:
+                lu, lv = u_mask.min(), v_mask.min()
+                ru, rv = u_mask.max(), v_mask.max()
 
-            box_info['Model_{:}'.format(idx)] = [lu, lv, ru, rv]
+                box_info['Model_{:}'.format(idx)] = [lu, lv, ru, rv]
 
         return box_info
 
@@ -194,12 +232,11 @@ if __name__ == '__main__':
         help='the shapenet id')
     parser.add_argument('--seq_num', type=int, default=1,
         help='the number of sequences being generated')
+    parser.add_argument('--start_index', type=int, default=0)
 
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
     for idx in range(args.seq_num):
-        post_fix = "{:06d}".format(idx)
-
+        post_fix = "{:06d}".format(idx + args.start_index)
         shapenet_parser = ShapeNetSceneParser(post_fix)
-
         shapenet_parser.run()

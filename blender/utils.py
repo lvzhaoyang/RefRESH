@@ -58,7 +58,7 @@ def set_intrinsic(K, bpy_camera, bpy_scene, H, W):
     bpy_scene.render.resolution_x = resolution_x_in_px
     bpy_scene.render.resolution_y = resolution_y_in_px
 
-    scale = resolution_x_in_px / (2*cx)
+    scale = resolution_x_in_px / float(2*cx)
 
     bpy_scene.render.resolution_percentage = scale * 100
 
@@ -66,14 +66,14 @@ def set_intrinsic(K, bpy_camera, bpy_scene, H, W):
     bpy_scene.render.pixel_aspect_y = 1.0
 
     # both in mm
-    bpy_camera.data.sensor_width  = fy * cx / (fx * cy)
+    bpy_camera.data.sensor_width  = fy * cx / float(fx * cy)
     bpy_camera.data.sensor_height = 1 # does not matter
 
-    s_u = resolution_x_in_px / bpy_camera.data.sensor_width
-    s_v = resolution_y_in_px / bpy_camera.data.sensor_height
+    s_u = resolution_x_in_px / float(bpy_camera.data.sensor_width)
+    s_v = resolution_y_in_px / float(bpy_camera.data.sensor_height)
 
     # we will use the default blender camera focal length
-    bpy_camera.data.lens = fx / s_u
+    bpy_camera.data.lens = fx / float(s_u)
 
 def parent_obj_to_camera(bpy_camera, bpy_scene, bpy_origin):
     """ Set the camera's parent to be origin
