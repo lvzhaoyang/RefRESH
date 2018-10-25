@@ -53,10 +53,13 @@ class ShapeNetSceneParser:
         info = {'color':         [],
                 'depth':         [],
                 'pose':          [],
+                'invalid':       [],
                 'object_mask':   [],
-                'object_2D_box': [],
-                'object_poses_allocentric': {},
-                'invalid':       [] }
+                'object_2D_box': {},
+                # whether the object is actually valid appearing in the current frame
+                'object_visible':{}, # the binary label for each frame
+                'object_visible_frames': {} # the frame index overall
+        }
 
         K = self.params['pinhole']
         info['calib'] = [K['fx'], K['fy'], K['cx'], K['cy']]
@@ -64,14 +67,20 @@ class ShapeNetSceneParser:
         with open(osp.join(self.tmp_path, 'info.pkl'), 'rb') as f:
             files = load(f)
             info['pose'] = files['camera_pose']
-            # info['object_pose'] = files['object_pose']
+            info['object_poses'] = files['object_pose']
             info['object_3D_box'] = files['object_3D_box']
-            object_poses = files['object_pose']
+            info['object_poses'] = files['object_pose']
 
         color_dir    = join(self.output_path, 'color')
         depth_dir    = join(self.output_path, 'depth')
         instance_dir = join(self.output_path, 'instance')
         invalid_dir  = join(self.output_path, 'invalid')
+
+        obj_name_list = list(files['object_pose'].keys())
+        for obj_name in obj_name_list:
+            info['object_2D_box'][obj_name] = []
+            info['object_visible'][obj_name]= []
+            info['object_visible_frames'][obj_name] = []
 
         for idx in range(0, self.params['trajectory']['views']):
 
@@ -87,27 +96,31 @@ class ShapeNetSceneParser:
 
             # process rendered image
             color = self.__read_color(exr, size)
-            rendered_color_file = join(color_dir,filename_png)
+            rendered_color_file = osp.abspath(join(color_dir,filename_png))
             io_utils.image_write(rendered_color_file, color)
             info['color'].append(rendered_color_file)
 
             if self.params['output_types']['depth']:
                 depth = self.__read_depth(exr, size)
-                depth_file = join(depth_dir, filename_png)
+                depth_file = osp.abspath(join(depth_dir, filename_png))
                 io_utils.pngdepth_write(depth_file, depth)
                 info['depth'].append(depth_file)
 
             if self.params['output_types']['segm']: # instance segmentation
                 obj_mask = self.__read_object_mask(exr, size)
-                obj_boxes2D = self.__get_bounding_box(obj_mask)
-                instance_file = join(instance_dir, filename_png)
+                for obj_name in obj_name_list:
+                    obj_index = int(obj_name.split('_')[-1])
+                    obj_box2D, obj_valid = self.__get_bounding_box(obj_mask, obj_index)
+                    info['object_2D_box'][obj_name].append(obj_box2D)
+                    info['object_visible'][obj_name].append(obj_valid)
+                    if obj_valid > 0:
+                        info['object_visible_frames'][obj_name].append(idx)
+                instance_file = osp.abspath(join(instance_dir, filename_png))
                 io_utils.pnginstance_write(instance_file, obj_mask)
                 info['object_mask'].append(instance_file)
-                info['object_2D_box'].append(obj_boxes2D)
 
-            if self.params['output_types']['gtflow']:
-                forward_flow, backward_flow = self.__read_flow(exr, size)
-
+            # if self.params['output_types']['gtflow']:
+            #     forward_flow, backward_flow = self.__read_flow(exr, size)
             # import matplotlib.pyplot as plt
             # for obj_name, obj_poses in object_poses.items():
             #     cam_pose_this = info['pose'][idx]
@@ -136,10 +149,13 @@ class ShapeNetSceneParser:
             #     plt.imshow(np.clip(flow_diff_ratio[:,:,1], -400, 400))
             #     plt.show()
 
-            invalid_mask_file = join(invalid_dir, filename_png)
+            invalid_mask_file = osp.abspath(join(invalid_dir, filename_png))
             io_utils.image_write(invalid_mask_file, invalid_mask)
             info['invalid'].append(invalid_mask_file)
 
+        # if len(info['object_visible'][obj_name]) < 1:
+        #     import pdb; pdb.set_trace()
+        #
         dataset_path = osp.join(self.output_path, 'info.pkl')
         with open(dataset_path, 'wb') as output:
             dump(info, output)
@@ -187,30 +203,32 @@ class ShapeNetSceneParser:
 
         return index
 
-    def __get_bounding_box(self, index_image):
+    def __get_bounding_box(self, index_image, index):
         """ get the object bounding box in 2D
+        :param the index / segmentation image
+        :param the specified object index
+        return the bounding box of the specified object and whether it is visible
         """
-        max_index = int(index_image.max())
-
         H, W = index_image.shape
         rows = np.linspace(0, H-1, H)
         cols = np.linspace(0, W-1, W)
-        vs, us = np.meshgrid(cols, rows)
+        us, vs = np.meshgrid(cols, rows)
 
-        box_info = {}
-        for idx in range(1, max_index+1):
-            obj_mask = (index_image == idx)
-            u_mask = us[obj_mask]
-            v_mask = vs[obj_mask]
-            if u_mask.size == 0 or v_mask.size == 0:
-                box_info['Model_{:}'.format(idx)] = [0,0,0,0]
-            else:
-                lu, lv = u_mask.min(), v_mask.min()
-                ru, rv = u_mask.max(), v_mask.max()
+        obj_mask = (index_image == index)
+        u_mask = us[obj_mask]
+        v_mask = vs[obj_mask]
 
-                box_info['Model_{:}'.format(idx)] = [lu, lv, ru, rv]
+        if u_mask.size == 0 or v_mask.size == 0 or obj_mask.sum() < 100:
+            # if the object are not visible or too small to distinguish
+            box = [0,0,0,0]
+            valid = 0 # do not use this info
+        else:
+            lu, lv = int(u_mask.min()), int(v_mask.min())
+            ru, rv = int(u_mask.max()), int(v_mask.max())
+            box = [lu, lv, ru, rv]
+            valid = 1
 
-        return box_info
+        return box, valid
 
     def __visualize(self, color, obj_boxes2D):
         """ Visualize the ground truth of

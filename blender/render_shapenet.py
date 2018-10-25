@@ -371,7 +371,7 @@ class ShapeNetRender:
 
             # the distance of the camera to the center of the object
             radius = traj_settings['radius']
-            azimuth_deg = 0
+            azimuth_deg = 360 * rand_uniform(0,1) # random generate view-point
             elevation_deg = 0
             theta_deg = 0
             bpy_camera.location = bpy_utils.allocentric_pose(radius, azimuth_deg, theta_deg)
