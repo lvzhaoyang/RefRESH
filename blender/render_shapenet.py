@@ -32,71 +32,15 @@ from pickle import load, dump
 
 sys.path.insert(0, ".")
 import utils as bpy_utils
+import shapenet_ids as sp
 from io_utils import load_file
 
 class ShapeNetRender:
     """ Render the shapenet obj given the camera viewpoints
     @todo: replace it by directly loading the taxonomy.json file
     """
-    shape_synset_name_pairs = [('02691156', 'aeroplane'),
-    							('02747177', ''),
-    							('02773838', ''),
-    							('02801938', ''),
-    							('02808440', ''),
-    							('02818832', ''),
-    							('02828884', ''),
-    							('02834778', 'bicycle'),
-    							('02843684', ''),
-    							('02858304', 'boat'),
-    							('02871439', ''),
-    							('02876657', 'bottle'),
-    							('02880940', ''),
-    							('02924116', 'bus'),
-    							('02933112', ''),
-    							('02942699', ''),
-    							('02946921', ''),
-    							('02954340', ''),
-    							('02958343', 'car'),
-    							('02992529', ''),
-    							('03001627', 'chair'),
-    							('03046257', ''),
-    							('03085013', ''),
-    							('03207941', ''),
-    							('03211117', 'tvmonitor'),
-    							('03261776', ''),
-    							('03325088', ''),
-    							('03337140', ''),
-    							('03467517', ''),
-    							('03513137', ''),
-    							('03593526', ''),
-    							('03624134', ''),
-    							('03636649', ''),
-    							('03642806', ''),
-    							('03691459', ''),
-    							('03710193', ''),
-    							('03759954', ''),
-    							('03761084', ''),
-    							('03790512', 'motorbike'),
-    							('03797390', ''),
-    							('03928116', ''),
-    							('03938244', ''),
-    							('03948459', ''),
-    							('03991062', ''),
-    							('04004475', ''),
-    							('04074963', ''),
-    							('04090263', ''),
-    							('04099429', ''),
-    							('04225987', ''),
-    							('04256520', 'sofa'),
-    							('04330267', ''),
-    							('04379243', 'diningtable'),
-    							('04401088', ''),
-    							('04460130', ''),
-    							('04468005', 'train'),
-    							('04530566', ''),
-    							('04554684', '')];
 
-    def __init__(self, root_path, post_fix=''):
+    def __init__(self, root_path, post_fix='', object_id = ''):
         """ The path of shapeNet folder
         """
         self.start_time = time.time()
@@ -107,17 +51,27 @@ class ShapeNetRender:
 
         # shapenet_taxonomy = osp.join(root_path, 'taxonomy.json')
 
-        shape_ids = self.params['shape_net_ids']
+        shape_dict = dict(sp.shape_synset_name_pairs)
 
-        self.shape_list = []
-        for shape_id in shape_ids:
-            # randomly choose obj index from the list
-            shape_dict = dict(self.shape_synset_name_pairs)
-            synset = shape_dict[shape_id]
-            print("Choose shape category {:}: {:}".format(shape_id, synset))
-            shape_path = osp.join(root_path, shape_id)
+        if object_id == '':
+            shape_ids = self.params['shape_net_ids']
 
-            self.shape_list += self.load_category_shape_list(shape_path)
+            self.shape_list = []
+            for shape_id in shape_ids:
+                # randomly choose obj index from the list
+                synset = shape_dict[shape_id]
+                print("Choose shape category {:}: {:}".format(shape_id, synset))
+                shape_path = osp.join(root_path, shape_id)
+
+                self.shape_list += self.load_category_shape_list(shape_path)
+        else:
+            synset = shape_dict[object_id]
+            print("Choose shape category {:}: {:}".format(object_id, synset))
+            shape_path = osp.join(root_path, object_id)
+            self.shape_list = self.load_category_shape_list(shape_path)
+
+            self.params['tmp_path'] = osp.join(self.params['tmp_path'], synset)
+            self.params['output_path'] = osp.join(self.params['output_path'], synset)
 
         # where all the openexr files are written to
         self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
@@ -433,6 +387,7 @@ if __name__ == '__main__':
     parser.add_argument('--seq_num', type=int, default=1,
         help='the number of sequences being generated')
     parser.add_argument('--start_index', type=int, default=0)
+    parser.add_argument('--object_id', type=str, default='')
 
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
@@ -440,7 +395,7 @@ if __name__ == '__main__':
 
     for idx in range(args.seq_num):
         post_fix = "{:06d}".format(idx+args.start_index)
-        shape_net_render = ShapeNetRender(shapenet_path, post_fix)
+        shape_net_render = ShapeNetRender(shapenet_path, post_fix, args.object_id)
         shape_net_render.run_rendering()
         # shapenet_parser = ShapeNetSceneParser(post_fix)
         # shapenet_parser.run()

@@ -35,16 +35,24 @@ import OpenEXR, Imath
 FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
 
 sys.path.insert(0, ".")
+import shapenet_ids as sp
 from geometry import depth2flow
 
 class ShapeNetSceneParser:
 
-    def __init__(self, post_fix = ''):
+    def __init__(self, post_fix = '', object_id = ''):
 
         self.params = io_utils.load_file('configs/shapenet_config', 'SHAPENET_MODELS')
 
-        self.output_path = osp.join(self.params['output_path'], post_fix)
-        self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
+        shape_dict = dict(sp.shape_synset_name_pairs)
+        synset = shape_dict[object_id]
+
+        if object_id == '':
+            self.output_path = osp.join(self.params['output_path'], post_fix)
+            self.tmp_path = osp.join(self.params['tmp_path'], post_fix)
+        else:
+            self.output_path = osp.join(self.params['output_path'], synset, post_fix)
+            self.tmp_path = osp.join(self.params['tmp_path'], synset, post_fix)
 
     def run(self):
 
@@ -153,9 +161,6 @@ class ShapeNetSceneParser:
             io_utils.image_write(invalid_mask_file, invalid_mask)
             info['invalid'].append(invalid_mask_file)
 
-        # if len(info['object_visible'][obj_name]) < 1:
-        #     import pdb; pdb.set_trace()
-        #
         dataset_path = osp.join(self.output_path, 'info.pkl')
         with open(dataset_path, 'wb') as output:
             dump(info, output)
@@ -251,10 +256,11 @@ if __name__ == '__main__':
     parser.add_argument('--seq_num', type=int, default=1,
         help='the number of sequences being generated')
     parser.add_argument('--start_index', type=int, default=0)
+    parser.add_argument('--object_id', type=str, default='')
 
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
     for idx in range(args.seq_num):
         post_fix = "{:06d}".format(idx + args.start_index)
-        shapenet_parser = ShapeNetSceneParser(post_fix)
+        shapenet_parser = ShapeNetSceneParser(post_fix, args.object_id)
         shapenet_parser.run()

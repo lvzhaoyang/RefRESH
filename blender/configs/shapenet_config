@@ -3,19 +3,30 @@
 
 [SHAPENET_MODELS]
 
-tmp_path      = '../data/ShapeNet/tmp'
-output_path   = '../data/ShapeNet/final'
+tmp_path      = '../data/ShapeNet/static_camera/tmp/'
+output_path   = '../data/ShapeNet/static_camera/final/'
 
-output_types  = {'depth':True, 'segm':True, 'gtflow':True, 'normal':False, 'vblur':False}
+output_types  = {'depth':True, 'segm':True, 'gtflow':False, 'normal':False, 'vblur':False}
 
-shape_net_ids = ['02691156', '02834778', '03790512', '02924116', '02958343']
+# 02691156: aeroplane
+# 02834778: bicyle
+# 03790512: motorbike
+# 02958343: car
+# 02924116: bus
+# 03001627: chair
+# 02858304: boat
+shape_net_ids = ['02691156', '02834778', '03790512', '02924116', '02958343', '03001627']
 
 # The number of objects in the visible scene
 num_obj   = 1
 
 # The environment setting
+# the size of a box
 box_scale = 3
-background_material_path = '../data/default_textures'
+
+# The background images are randomly downloaded from https://texture.ninja/
+#background_material_path = '../data/default_textures'
+background_material_path = '../data/ninja_textures'
 
 # set the camera parameter
 width     = 640
@@ -24,12 +35,12 @@ height    = 480
 pinhole   = {'fx': 1000, 'fy': 1000, 'cx':320, 'cy':240}
 
 # options for the camera trajectory
-#trajectory = {'type': 'ORBIT', 'radius': 1.5, 'views': 10}
-trajectory = {'type': 'STATIC','radius': 1.5, 'views': 50}
+#trajectory = {'type': 'ORBIT', 'radius': 1.8, 'views': 50}
+trajectory = {'type': 'STATIC','radius': 1.8, 'views': 50}
 
 # set the environment lighting distribution (uniform)
 env_light_min = 0.8
 env_light_max = 1
 
-# set the object motion ranges for every 10 frames
-obj_motions = {'t_max': 1, 'r_max': 180}
+# set the maximum motion range of the objects (every 10 frames)
+obj_motions = {'t_max': 0.5, 'r_max': 90}
