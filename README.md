@@ -145,6 +145,10 @@ For a more detailed instructions specifically for this dataset, please refer to 
 
 To create your dataset with the blender toolkit, please refer to [./blender/README](./blender/README.md) 
 
+## Download the created RefRESH dataset
+
+The dataset created in the paper for pretraining is [available][11]. Please check the [dataset readme][12] for several notes for it. 
+
 ## License
 
 MIT License
@@ -169,10 +173,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## Download the created RefRESH dataset
-
-We are currently working how to host the dataset. It will be available soon. 
-
 ## Acknowledgement 
 
 Our work can not be done without the precedent research efforts. Part of the human rendering code is refactored on top of the [SURREAL][5] toolkit. 
@@ -187,3 +187,5 @@ Our work can not be done without the precedent research efforts. Part of the hum
 [8]: https://github.com/NVlabs/learningrigidity
 [9]: https://mlatgt.blog/2018/09/06/learning-rigidity-and-scene-flow-estimation/
 [10]: https://research.nvidia.com/publication/2018-09_Learning-Rigidity-in
+[11]: https://drive.google.com/drive/folders/1DMb3qpoYoowa00EfzGzTKySbT_WIbhD7?usp=sharing
+[12]: https://github.com/NVlabs/learningrigidity/blob/master/dataset_description.md
